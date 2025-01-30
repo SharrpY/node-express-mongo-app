@@ -5,9 +5,10 @@ const tourRouter = require("./routes/tourRoutes");
 const userRouter = require("./routes/userRoutes");
 
 const app = express();
-
 // 1 - MIDDLEWARES
-app.use(morgan("dev"));
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
 app.use(express.json()); // express, request bodysini json olarak işlemediğininden middleware kullanmamız gerek.
 app.use(express.static(`${__dirname}/public`));
 
