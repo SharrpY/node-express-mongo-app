@@ -4,12 +4,9 @@ const fs = require("fs");
 
 const router = express.Router(); //middleware function
 
-router.param("id", tourController.checkID);
+// router.param("id", tourController.checkID);
 
-router
-  .route("/")
-  .get(tourController.getAllTours)
-  .post(tourController.checkBody, tourController.createTour); // aynı endpointe sahipler gruplanır, sıra önemsiz.
+router.route("/").get(tourController.getAllTours).post(tourController.createTour); // aynı endpointe sahipler gruplanır, sıra önemsiz.
 router
   .route("/:id")
   .get(tourController.getTour)
