@@ -1,4 +1,12 @@
 const Tour = require("../models/tourModel");
+const APIFeatures = require("./../utils/apiFeatures");
+
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = "5";
+  req.query.sort = "-ratingsAverage,price";
+  req.query.fields = "name,price,ratingsAverage,summary,difficulty";
+  next();
+};
 
 // const tours = JSON.parse(fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`));
 
@@ -17,8 +25,15 @@ const Tour = require("../models/tourModel");
 
 exports.getAllTours = async (req, res) => {
   try {
-    const tours = await Tour.find(); //find() returns an array of all the documents
+    //EXECUTE QUERY
+    const features = new APIFeatures(Tour.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    const tours = await features.query;
 
+    // SEND RESPONSE
     res.status(200).json({
       status: "success",
       results: tours.length,
@@ -76,10 +91,14 @@ exports.createTour = async (req, res) => {
 
 exports.updateTour = async (req, res) => {
   try {
+    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, // return the updated document
+      runValidators: true,
+    });
     res.status(200).json({
       success: true,
       data: {
-        tour: "<Updated tour here...>",
+        tour,
       },
     });
   } catch (err) {
@@ -90,10 +109,58 @@ exports.updateTour = async (req, res) => {
   }
 };
 
-exports.deleteTour = (req, res) => {
-  res.status(204).json({
-    // 204 : no content
-    success: true,
-    data: null,
-  });
+exports.deleteTour = async (req, res) => {
+  try {
+    await Tour.findByIdAndDelete(req.params.id);
+
+    res.status(204).json({
+      // 204 : no content
+      success: true,
+      data: null,
+    });
+  } catch (err) {
+    res.status(404).json({
+      success: false,
+      message: err,
+    });
+  }
+};
+
+exports.getTourStats = async (req, res) => {
+  try {
+    const stats = await Tour.aggregate([
+      {
+        $match: { ratingsAverage: { $gte: 4.5 } },
+      },
+      {
+        $group: {
+          _id: { $toUpper: "$difficulty" },
+          numTours: { $sum: 1 },
+          numRatings: { $sum: "$ratingsQuantity" },
+          avgRating: { $avg: "$ratingsAverage" },
+          avgPrice: { $avg: "$price" },
+          minPrice: { $min: "$price" },
+          maxPrice: { $max: "$price" },
+        },
+      },
+      {
+        $sort: { avgPrice: 1 },
+      },
+      // {
+      //   $match: { _id: { $ne: "EASY" } },
+      // },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        stats,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
+      success: false,
+      message: err,
+    });
+  }
 };
